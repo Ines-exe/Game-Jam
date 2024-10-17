@@ -3,25 +3,26 @@ using UnityEngine;
 using UnityEngine.Events;
 
 
-public class CowGirl : MonoBehaviour
+public class Mario : MonoBehaviour
 {
     public float moveSpeed =5f; 
     private Rigidbody2D rb; 
     private Vector3 ogScale; 
 
-  [SerializeField] private float m_JumpForce = 400f;							// Amount of force added when the player jumps.
+  	[SerializeField] private float m_JumpForce = 400f;							// Amount of force added when the player jumps.
 	[Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;			// Amount of maxSpeed applied to crouching movement. 1 = 100%
 	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	// How much to smooth out the movement
 	[SerializeField] private bool m_AirControl = false;							// Whether or not a player can steer while jumping;
 	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
-	[SerializeField] private Transform m_GroundCheck;							// A position marking where to check if the player is grounded.
+	[SerializeField] private Transform m_GroundCheck1;
+	[SerializeField] private Transform m_GroundCheck2;
+	[SerializeField] private Transform m_GroundCheck3;							// A position marking where to check if the player is grounded.
 	[SerializeField] private Transform m_CeilingCheck;							// A position marking where to check for ceilings
 	[SerializeField] private Collider2D m_CrouchDisableCollider;				// A collider that will be disabled when crouching
 
 	const float k_GroundedRadius = .2f; // Radius of the overlap circle to determine if grounded
 	private bool m_Grounded;            // Whether or not the player is grounded.
 	const float k_CeilingRadius = .2f; // Radius of the overlap circle to determine if the player can stand up
-	private Rigidbody2D m_Rigidbody2D;
 	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
 	private Vector3 m_Velocity = Vector3.zero;
 
@@ -37,9 +38,9 @@ public class CowGirl : MonoBehaviour
 	private bool m_wasCrouching = false;
 
     // Start is called before the first frame update***************************************
-    void Start()
-    {
-    } ***********************************************************************************
+   // void Start()
+    //{
+    //} 
 
 private void Awake()
 	{
@@ -61,7 +62,26 @@ private void Awake()
 
 		// The player is grounded if a circlecast to the groundcheck position hits anything designated as ground
 		// This can be done using layers instead but Sample Assets will not overwrite your project settings.
-	  	Collider2D[] colliders = Physics2D.OverlapCircleAll(m_GroundCheck.position, k_GroundedRadius, m_WhatIsGround);
+	  	Collider2D[] colliders1 = Physics2D.OverlapCircleAll(m_GroundCheck1.position, k_GroundedRadius, m_WhatIsGround);
+		Collider2D[] colliders2 = Physics2D.OverlapCircleAll(m_GroundCheck2.position, k_GroundedRadius, m_WhatIsGround);
+		Collider2D[] colliders3 = Physics2D.OverlapCircleAll(m_GroundCheck3.position, k_GroundedRadius, m_WhatIsGround);
+
+		CheckGrounded(colliders1, wasGrounded);
+    	CheckGrounded(colliders2, wasGrounded);
+    	CheckGrounded(colliders3, wasGrounded);
+
+        //moving left and right
+        float xDirection= Input.GetAxis("Horizontal")*moveSpeed*Time.fixedDeltaTime; 
+    //    float yDirection= Input.GetAxis("Vertical")*moveSpeed*Time.fixedDeltaTime; 
+        bool crouch = Input.GetKeyDown(KeyCode.S);
+        bool jump = Input.GetKeyDown(KeyCode.W); 
+
+        Move(xDirection, crouch, jump); 
+       // Vector2 newPos = rb.position + new Vector2(xDirection, yDirection); 
+//        rb.MovePosition(newPos); 
+    }
+
+	void CheckGrounded(Collider2D[] colliders,bool wasGrounded){
 	  	for (int i = 0; i < colliders.Length; i++)
 	  	{
 		  	if (colliders[i].gameObject != gameObject)
@@ -69,18 +89,10 @@ private void Awake()
 				  m_Grounded = true;
 				  if (!wasGrounded)
 					OnLandEvent.Invoke();
+					break;
 			}
 		}
-        //moving left and right
-        float xDirection= Input.GetAxis("Horizontal")*moveSpeed*Time.fixedDeltaTime; 
-    //    float yDirection= Input.GetAxis("Vertical")*moveSpeed*Time.fixedDeltaTime; 
-        bool crouch = Input.GetAxis(KeyCode.S);
-        bool jump = Input.GetAxis(KeyCode.W); 
-
-        Move(xDirection, crouch, jump); 
-       // Vector2 newPos = rb.position + new Vector2(xDirection, yDirection); 
-//        rb.MovePosition(newPos); 
-    }
+	} 
 
     public void Move(float move, bool crouch, bool jump)
 	{
@@ -127,9 +139,9 @@ private void Awake()
 			}
 
 			// Move the character by finding the target velocity
-			Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
+			Vector3 targetVelocity = new Vector2(move * 10f, rb.velocity.y);
 			// And then smoothing it out and applying it to the character
-			m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref m_Velocity, m_MovementSmoothing);
+			rb.velocity = Vector3.SmoothDamp(rb.velocity, targetVelocity, ref m_Velocity, m_MovementSmoothing);
 
 			// If the input is moving the player right and the player is facing left...
 			if (move > 0 && !m_FacingRight)
@@ -144,21 +156,27 @@ private void Awake()
 				Flip();
 			}
 		}
+
 		// If the player should jump...
 		if (m_Grounded && jump)
 		{
 			// Add a vertical force to the player.
 			m_Grounded = false;
-			m_Rigidbody2D.AddForce(new Vector2(0f, m_JumpForce));
+			rb.AddForce(new Vector2(0f, m_JumpForce));
 		}
 	}
 
-    // Update is called once per frame
-    void Update(){
-    // jumping on top of the obstacles
-        if(Input.GetKeyDown(KeyCode.Space)){
-            rb.AddForce(Vector2.up*500);  
-        }
-    }
 
+		void Flip(){
+			// Switch the way the player is labelled as facing.
+		m_FacingRight = !m_FacingRight;
+
+		// Multiply the player's x local scale by -1.
+		Vector3 theScale = transform.localScale;
+		theScale.x *= -1;
+		transform.localScale = theScale;
+	}
 }
+
+
+		
