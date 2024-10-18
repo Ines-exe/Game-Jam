@@ -22,6 +22,10 @@ public class Cowgirl : MonoBehaviour
     private bool m_FacingRight = true;  
     private Vector3 m_Velocity = Vector3.zero;
 
+    private float pullSpeed = 5f; 
+
+    private bool isLassoed = false; 
+
     [Header("Events")]
     public UnityEvent OnLandEvent;
 
@@ -30,6 +34,8 @@ public class Cowgirl : MonoBehaviour
 
     public BoolEvent OnCrouchEvent;
     private bool m_wasCrouching = false;
+
+    private float offset = 2f; 
 
     private void Awake()
     {
@@ -41,6 +47,10 @@ public class Cowgirl : MonoBehaviour
 
         if (OnCrouchEvent == null)
             OnCrouchEvent = new BoolEvent();
+
+        if(isLassoed){
+            PullToCloud(); 
+        }
     }
 
     void FixedUpdate()
@@ -131,4 +141,17 @@ public class Cowgirl : MonoBehaviour
         theScale.x *= -1;
         transform.localScale = theScale;
     }
+
+    public void PullToCloud(){
+        GameObject cloud =GameObject.Find("cloud");
+        transform.position = Vector2.MoveTowards(transform.position,cloud.transform.position, pullSpeed * Time.deltaTime);
+        
+
+        if(Vector2.Distance(transform.position, cloud.transform.position) > 0.4f){
+            isLassoed = false; 
+            transform.position = new Vector2(cloud.transform.position.x,cloud.transform.position.y + offset);
+        }
+
+    }
 }
+
