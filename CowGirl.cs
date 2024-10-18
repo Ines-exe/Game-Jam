@@ -69,4 +69,102 @@ public class Cowgirl : MonoBehaviour
 
         CheckGrounded(colliders1, wasGrounded);
         CheckGrounded(colliders2, wasGrounded);
-        CheckGr
+        CheckGrounded(colliders3, wasGrounded);
+
+        float xDirection = Input.GetAxis("Horizontal") * moveSpeed * Time.fixedDeltaTime; 
+        bool crouch = Input.GetKeyDown(KeyCode.S);
+        bool jump = Input.GetKeyDown(KeyCode.W); 
+
+        Move(xDirection, crouch, jump); 
+    }
+
+    void CheckGrounded(Collider2D[] colliders, bool wasGrounded)
+    {
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if (colliders[i].gameObject != gameObject)
+            {
+                m_Grounded = true;
+                if (!wasGrounded)
+                    OnLandEvent.Invoke();
+                break;
+            }
+        }
+    }
+
+    public void Move(float move, bool crouch, bool jump)
+    {
+        if (m_Grounded || m_AirControl)
+        {
+            // Handle crouching
+            if (crouch && !m_wasCrouching)
+            {
+                m_wasCrouching = true;
+                OnCrouchEvent.Invoke(true);
+                StartCoroutine(CrouchForSeconds(2f)); // Start coroutine to crouch for 2 seconds
+            }
+
+            if (m_wasCrouching)
+            {
+                move *= m_CrouchSpeed; // Reduce speed when crouching
+            }
+
+            // Move character
+            Vector3 targetVelocity = new Vector2(move * 10f, rb.velocity.y);
+            rb.velocity = Vector3.SmoothDamp(rb.velocity, targetVelocity, ref m_Velocity, m_MovementSmoothing);
+
+            // Flip character if necessary
+            if (move > 0 && !m_FacingRight)
+            {
+                Flip();
+            }
+            else if (move < 0 && m_FacingRight)
+            {
+                Flip();
+            }
+        }
+
+        // Jump
+        if (m_Grounded && jump)
+        {
+            m_Grounded = false;
+            isJumping = true; // Set jumping state
+            rb.AddForce(new Vector2(0f, m_JumpForce));
+            animator.SetBool("isJumping", true); // Set the Animator parameter
+        }
+
+        // Reset isJumping when landing
+        if (m_Grounded && isJumping)
+        {
+            isJumping = false; // Reset jumping state
+            animator.SetBool("isJumping", false); // Reset Animator parameter
+        }
+    }
+
+    private IEnumerator CrouchForSeconds(float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        m_wasCrouching = false; // Reset crouch state
+        OnCrouchEvent.Invoke(false); // Notify that the player has stood up
+    }
+
+    void Flip()
+    {
+        m_FacingRight = !m_FacingRight;
+        Vector3 theScale = transform.localScale;
+        theScale.x *= -1;
+        transform.localScale = theScale;
+    }
+
+    public void PullToCloud()
+    {
+        GameObject cloud = GameObject.Find("cloud");
+        transform.position = Vector2.MoveTowards(transform.position, cloud.transform.position, pullSpeed * Time.deltaTime);
+        
+        if (Vector2.Distance(transform.position, cloud.transform.position) > 0.4f)
+        {
+            isLassoed = false; 
+            transform.position = new Vector2(cloud.transform.position.x, cloud.transform.position.y + offset);
+        }
+    }
+}
